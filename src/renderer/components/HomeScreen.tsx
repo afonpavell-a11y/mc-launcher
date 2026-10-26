@@ -8,7 +8,7 @@ import { playClickSound } from '../lib/sound';
 import { t } from '../lib/i18n';
 import SkinViewer from './SkinViewer';
 
-export default function HomeScreen() {
+export default function HomeScreen({ onOpenAdmin }: { onOpenAdmin?: () => void }) {
   const { profiles, activeId } = useProfileStore();
   const { selectedVersion } = useVersionsStore();
   const { settings } = useSettingsStore();
@@ -18,35 +18,44 @@ export default function HomeScreen() {
 
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clickCount, setClickCount] = useState(0);
 
   const skinUrl = active?.localSkin 
     ? active.localSkin 
     : active ? `https://mc-heads.net/skin/${active.name}` : null;
 
+  const handleNameClick = () => {
+    const newCount = clickCount + 1;
+    setClickCount(newCount);
+    if (newCount >= 3) {
+      setClickCount(0);
+      onOpenAdmin?.();
+    }
+    setTimeout(() => setClickCount(0), 1000);
+  };
+
   const handleClick = () => {
     if (settings.enableSounds) playClickSound();
 
-    // Если версия не выбрана — перекидываем в библиотеку
     if (!isReady) {
       window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'library' }));
       return;
     }
 
-    // Если всё выбрано — запускаем игру
     if (launching) return;
     setLaunching(true);
     setError(null);
 
-    window.launcher.launchGame({
+    (window as any).launcher.launchGame({
       profile: active,
       version: selectedVersion,
       settings,
-    }).then((res) => {
+    }).then((res: any) => {
       if (!res.ok) {
         setError(res.error || 'Ошибка запуска');
         setLaunching(false);
       }
-    }).catch((e) => {
+    }).catch((e: any) => {
       setError(e.message || 'Ошибка запуска');
       setLaunching(false);
     });
@@ -55,8 +64,15 @@ export default function HomeScreen() {
   return (
     <div className="flex h-full w-full p-8 gap-8">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex-1 flex flex-col justify-center max-w-2xl">
-        <h1 className="text-6xl font-extrabold text-white mb-4">
-          {t(lang, 'hello')}, <span style={{ color: settings.accentColor || '#2563eb' }}>{active ? active.name : 'Guest'}</span>!
+        <h1 className="text-6xl font-extrabold text-white mb-4 select-none">
+          {t(lang, 'hello')},{' '}
+          <span 
+            onClick={handleNameClick} 
+            className="cursor-pointer transition-colors"
+            style={{ color: settings.accentColor || '#2563eb' }}
+          >
+            {active ? active.name : 'Guest'}
+          </span>!
         </h1>
         <p className="text-xl text-gray-400 mb-2">
           {selectedVersion ? `Готов к запуску ${selectedVersion.id}` : t(lang, 'selectVersion')}

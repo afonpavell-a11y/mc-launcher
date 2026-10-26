@@ -37,6 +37,10 @@ contextBridge.exposeInMainWorld('launcher', {
   downloadMod: (projectId: string, instanceId: string, gameVersion: string, loader: string) => 
     ipcRenderer.invoke('modrinth:download', projectId, instanceId, gameVersion, loader),
 
+  // Музыка
+  getMusicTracks: () => ipcRenderer.invoke('music:list'),
+  openMusicFolder: () => ipcRenderer.invoke('music:open-folder'),
+
   onLaunchProgress: (cb: (data: any) => void) => {
     const listener = (_: any, data: any) => cb(data);
     ipcRenderer.on('launch:progress', listener);
@@ -47,8 +51,6 @@ contextBridge.exposeInMainWorld('launcher', {
     ipcRenderer.on('launch:log', listener);
     return () => ipcRenderer.removeListener('launch:log', listener);
   },
-
-  // --- АВТООБНОВЛЕНИЕ ---
   onUpdateAvailable: (cb: (version: string) => void) => {
     const listener = (_: any, version: string) => cb(version);
     ipcRenderer.on('update-available', listener);

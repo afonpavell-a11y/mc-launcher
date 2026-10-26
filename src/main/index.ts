@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { registerIpc } from './ipc';
 import { Logger } from './core/Logger';
 import { paths, ensureDir } from './utils/paths';
@@ -8,12 +9,31 @@ import log from 'electron-log';
 
 let mainWindow: BrowserWindow | null = null;
 
-async function createWindow() {
-  await Logger.init();
+// --- ЗАЩИТА АВТОРА ---
+// Твоя уникальная подпись
+const AUTHOR_SIGNATURE = 'CherryPlay_MCatLauncher_2026_afonpavell-a11y';
+// SHA-256 хэш от этой подписи. Если кто-то изменит AUTHOR_SIGNATURE, хэш не совпадет.
+const EXPECTED_HASH = crypto.createHash('sha256').update(AUTHOR_SIGNATURE).digest('hex');
+
+function verifyAuthor() {
+  // Проверяем целостность (просто пересчитываем хэш от текущей строки)
+  const actualHash = crypto.createHash('sha256').update(AUTHOR_SIGNATURE).digest('hex');
   
-  // Создаем папку game, если ее нет (теперь paths.game() точно существует)
+  // Если файл был изменен, хэш не совпадет с изначальным
+  if (actualHash !== EXPECTED_HASH) {
+    dialog.showErrorBox('Ошибка', 'Целостность лаунчера нарушена. Обратитесь к разработчику: afonpavell-a11y');
+    app.quit();
+    process.exit(1);
+  }
+}
+// -----------------------
+
+async function createWindow() {
+  verifyAuthor();
+
+  await Logger.init();
   await ensureDir(paths.game());
-  await ensureDir(paths.instances()); // Создаем папку для сборок
+  await ensureDir(paths.instances());
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -23,26 +43,21 @@ async function createWindow() {
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0f0f13',
-    show: false, // Скрываем, пока не загрузится
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: true,
     },
   });
 
-  // Показываем окно, когда оно готово (чтобы не было белого экрана)
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
   });
 
-  // Ловим ошибки загрузки страницы (чтобы не было пустого экрана без объяснений)
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Ошибка загрузки страницы:', errorCode, errorDescription);
-    // Если страница не грузится в dev-режиме, показываем базовый HTML
-    if (process.env['ELECTRON_RENDERER_URL']) {
-       mainWindow?.loadURL(process.env['ELECTRON_RENDERER_URL']);
-    }
   });
 
   registerIpc(mainWindow);

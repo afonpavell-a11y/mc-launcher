@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, app } from 'electron';
 import { AuthService } from '../core/AuthService';
 import { VersionManager } from '../core/VersionManager';
 import { ModrinthService } from '../core/ModrinthService';
@@ -16,18 +16,16 @@ function wrap<T>(fn: () => Promise<T>): Promise<Result<T>> {
 export function registerIpc(win: BrowserWindow) {
   const launcher = new GameLauncher(win);
 
-  // Настройки и профили
+  // --- НАСТРОЙКИ И ПРОФИЛИ ---
   ipcMain.handle('settings:get', () => wrap(() => Storage.loadSettings()));
   ipcMain.handle('settings:save', (_, s) => wrap(() => Storage.saveSettings(s)));
   ipcMain.handle('profiles:get', () => wrap(() => Storage.loadProfiles()));
   ipcMain.handle('profiles:save', (_, p) => wrap(() => Storage.saveProfiles(p)));
   ipcMain.handle('auth:offline', (_, name) => wrap(async () => AuthService.createOffline(name)));
 
-  // Версии
+  // --- ВЕРСИИ ---
   ipcMain.handle('versions:manifest', () => wrap(() => VersionManager.fetchManifest()));
   ipcMain.handle('versions:installed', () => wrap(async () => Storage.loadInstances()));
-  
-  // Исправленный вызов: теперь он восстанавливает JSON, если его нет
   ipcMain.handle('versions:get-json', (_, id) => wrap(() => VersionManager.resolveVersion(id)));
   
   ipcMain.handle('versions:delete', (_, id) => wrap(async () => {
@@ -40,10 +38,8 @@ export function registerIpc(win: BrowserWindow) {
   ipcMain.handle('versions:download', (_, v) => wrap(async () => {
     win.webContents.send('launch:progress', { stage: 'downloading', current: 0, total: 100, message: 'Скачивание JSON...' });
     
-    // Скачиваем JSON
     const json = await VersionManager.downloadClientJson(v);
     
-    // ВАЖНО: Копируем JSON в папку инстанса, чтобы он там был!
     const instanceDir = paths.instanceDir(v.id);
     await fs.mkdir(instanceDir, { recursive: true });
     await fs.writeFile(path.join(instanceDir, `${v.id}.json`), JSON.stringify(json, null, 2));
@@ -55,7 +51,7 @@ export function registerIpc(win: BrowserWindow) {
     return json;
   }));
 
-  // Загрузчики
+  // --- ЗАГРУЗЧИКИ ---
   ipcMain.handle('loaders:fabric:versions', (_, mc) => wrap(() => VersionManager.getFabricLoaders(mc)));
   ipcMain.handle('loaders:quilt:versions', () => wrap(() => VersionManager.getQuiltLoaders()));
   ipcMain.handle('loaders:forge:versions', (_, mc) => wrap(() => VersionManager.getForgeVersions(mc)));
@@ -77,11 +73,11 @@ export function registerIpc(win: BrowserWindow) {
   ipcMain.handle('loaders:forge:install', installLoader('installForge'));
   ipcMain.handle('loaders:neoforge:install', installLoader('installNeoForge'));
 
-  // Запуск
+  // --- ЗАПУСК ИГРЫ ---
   ipcMain.handle('game:launch', (_, { profile, version, settings }) => wrap(() => launcher.launch(profile, version, settings)));
   ipcMain.handle('game:get-dir', (_, id) => wrap(async () => paths.instanceDir(id)));
 
-  // Файлы и папки
+  // --- ФАЙЛЫ И ПАПКИ ---
   ipcMain.handle('shell:open-folder', (_, p: string) => wrap(async () => {
     const { shell } = await import('electron');
     await shell.openPath(p);
@@ -112,7 +108,6 @@ export function registerIpc(win: BrowserWindow) {
     }
   }));
 
-  // Миры
   ipcMain.handle('fs:list-worlds', (_, instanceId: string) => wrap(async () => {
     const savesDir = path.join(paths.instanceDir(instanceId), 'saves');
     try {
@@ -121,7 +116,6 @@ export function registerIpc(win: BrowserWindow) {
     } catch { return []; }
   }));
 
-  // Журнал (latest.log)
   ipcMain.handle('fs:read-log', (_, instanceId: string) => wrap(async () => {
     const logPath = path.join(paths.instanceDir(instanceId), 'logs', 'latest.log');
     try {
@@ -130,7 +124,7 @@ export function registerIpc(win: BrowserWindow) {
     } catch { return 'Лог пуст или ещё не создан.'; }
   }));
 
-  // Modrinth
+  // --- MODRINTH ---
   ipcMain.handle('modrinth:search', (_, q, opts) => wrap(() => ModrinthService.search(q, opts)));
   ipcMain.handle('modrinth:popular', (_, t, o) => wrap(() => ModrinthService.getPopular(t, o)));
   ipcMain.handle('modrinth:versions', (_, id, l, v) => wrap(() => ModrinthService.getVersions(id, l, v)));
@@ -139,7 +133,50 @@ export function registerIpc(win: BrowserWindow) {
     return ModrinthService.downloadModWithDeps(projectId, modsDir, gameVersion, loader);
   }));
 
-  // Окно
+  // --- МУЗЫКА ---
+  // Читаем файлы из public/music и конвертируем в base64
+  ipcMain.handle('music:list', async () => {
+    try {
+      const musicDir = path.join(app.getAppPath(), 'public', 'music');
+      
+      const files = await fs.readdir(musicDir).catch(() => []);
+      const tracks = files.filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f));
+      
+      const tracksData = await Promise.all(tracks.map(async (name) => {
+        const fullPath = path.join(musicDir, name);
+        try {
+          const buffer = await fs.readFile(fullPath);
+          const base64 = buffer.toString('base64');
+          
+          let mime = 'audio/mpeg';
+          if (name.endsWith('.wav')) mime = 'audio/wav';
+          if (name.endsWith('.ogg')) mime = 'audio/ogg';
+          if (name.endsWith('.m4a')) mime = 'audio/mp4';
+          
+          return { 
+            name, 
+            dataUrl: `data:${mime};base64,${base64}` 
+          };
+        } catch (e) {
+          console.error('Ошибка чтения файла:', name, e);
+          return null;
+        }
+      }));
+      
+      return { ok: true, data: tracksData.filter(t => t !== null) };
+    } catch (e) {
+      return { ok: false, error: 'Не удалось прочитать папку с музыкой' };
+    }
+  });
+  
+  ipcMain.handle('music:open-folder', async () => {
+    const { shell } = await import('electron');
+    const musicDir = path.join(app.getAppPath(), 'public', 'music');
+    await shell.openPath(musicDir);
+    return { ok: true };
+  });
+
+  // --- ОКНО ---
   ipcMain.on('window:minimize', () => win.minimize());
   ipcMain.on('window:maximize', () => win.isMaximized() ? win.unmaximize() : win.maximize());
   ipcMain.on('window:close', () => win.close());

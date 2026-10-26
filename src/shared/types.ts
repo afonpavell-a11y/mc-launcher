@@ -8,16 +8,15 @@ export interface Profile {
   accessToken?: string;
   refreshToken?: string;
   skinUrl?: string;
-  localSkin?: string;
   capeUrl?: string;
   status: 'online' | 'playing' | 'dnd' | 'offline';
+  isAdmin?: boolean;
+  prefix?: string;
   createdAt: number;
 }
 
 export interface Settings {
   theme: 'system' | 'light' | 'dark';
-  themeColor?: 'blue' | 'green' | 'purple' | 'red' | 'orange' | 'pink';
-  language?: 'ru' | 'en' | 'uk';
   ramMinMb: number;
   ramMaxMb: number;
   javaPath?: string;
@@ -27,15 +26,16 @@ export interface Settings {
   backgroundImage?: string;
   backgroundOpacity?: number;
   accentColor?: string;
-  enableSounds?: boolean;
-  particlesType?: 'none' | 'stars' | 'snow' | 'sakura' | 'rain' | 'sparks';
-  particlesCount?: number;
-  particlesSpeed?: number;
-  uiGlow?: number;
-  uiBlur?: number;
   uiScale?: number;
+  uiBlur?: number;
   uiRadius?: number;
   panelOpacity?: number;
+  uiGlow?: number;
+  showStars?: boolean;
+  starCount?: number;
+  language?: 'ru' | 'en';
+  enableSounds?: boolean;
+  enableMusic: boolean;
 }
 
 export interface VersionSummary {
@@ -68,6 +68,14 @@ export interface LogLine {
   type: 'stdout' | 'stderr' | 'info';
   line: string;
   ts: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  authorName: string;
+  authorPrefix: string;
+  text: string;
+  timestamp: number;
 }
 
 export interface Result<T> {

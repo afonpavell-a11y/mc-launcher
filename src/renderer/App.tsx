@@ -14,6 +14,9 @@ import CreateInstanceModal from './components/CreateInstanceModal';
 import ParticleEffect from './components/ParticleEffect';
 import Toast from './components/Toast';
 import ProgressOverlay from './components/ProgressOverlay';
+import MusicPlayer from './components/MusicPlayer';
+import AdminPanel from './components/AdminPanel';
+import ChatWidget from './components/ChatWidget';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useProfileStore } from './store/useProfileStore';
 
@@ -25,7 +28,8 @@ export default function App() {
   const [createInstanceOpen, setCreateInstanceOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [isLoading, setIsLoading] = useState(true);
-  const [updateVersion, setUpdateVersion] = useState<string | null>(null); // Стейт для обновления
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 2000);
@@ -37,9 +41,8 @@ export default function App() {
     loadProfiles();
   }, [loadSettings, loadProfiles]);
 
-  // Слушаем обновления
   useEffect(() => {
-    const remove = window.launcher.onUpdateAvailable?.((version) => {
+    const remove = (window as any).launcher.onUpdateAvailable?.((version: string) => {
       setUpdateVersion(version);
     });
     return () => remove?.();
@@ -107,9 +110,9 @@ export default function App() {
           <div className="title-bar-drag h-9 flex items-center justify-between px-3 bg-black/10 dark:bg-black/20 border-b border-black/5 dark:border-white/5 shrink-0 z-20">
             <div className="text-xs font-semibold tracking-widest text-gray-500 dark:text-gray-400">MCATLAUNCHER</div>
             <div className="flex gap-2 no-drag">
-              <button onClick={() => window.launcher.minimize()} className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"><Minus size={14} /></button>
-              <button onClick={() => window.launcher.maximize()} className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"><Square size={12} /></button>
-              <button onClick={() => window.launcher.close()} className="p-1.5 hover:bg-red-500/80 rounded transition-colors text-black dark:text-white"><X size={14} /></button>
+              <button onClick={() => (window as any).launcher.minimize()} className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"><Minus size={14} /></button>
+              <button onClick={() => (window as any).launcher.maximize()} className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"><Square size={12} /></button>
+              <button onClick={() => (window as any).launcher.close()} className="p-1.5 hover:bg-red-500/80 rounded transition-colors text-black dark:text-white"><X size={14} /></button>
             </div>
           </div>
 
@@ -131,7 +134,7 @@ export default function App() {
                   transition={{ duration: 0.2 }}
                   className="h-full"
                 >
-                  {activeTab === 'home' && <HomeScreen />}
+                  {activeTab === 'home' && <HomeScreen onOpenAdmin={() => setAdminOpen(true)} />}
                   {activeTab === 'search' && <SearchScreen />}
                   {activeTab === 'library' && <LibraryScreen />}
                   {activeTab === 'profiles' && <ProfilesScreen />}
@@ -148,8 +151,10 @@ export default function App() {
           
           <Toast />
           <ProgressOverlay />
+          <MusicPlayer />
+          <ChatWidget />
+          {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
 
-          {/* ОКНО ОБНОВЛЕНИЯ */}
           {updateVersion && (
             <div className="fixed bottom-6 right-6 z-[999] bg-[#1a1a1f] border border-blue-500/50 p-6 rounded-2xl shadow-2xl max-w-sm">
               <h3 className="text-lg font-bold text-white mb-2">Доступно обновление!</h3>
@@ -162,7 +167,7 @@ export default function App() {
                   Позже
                 </button>
                 <button 
-                  onClick={() => { window.launcher.downloadUpdate(); setUpdateVersion(null); }}
+                  onClick={() => { (window as any).launcher.downloadUpdate(); setUpdateVersion(null); }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors"
                 >
                   <Download size={16} /> Скачать
