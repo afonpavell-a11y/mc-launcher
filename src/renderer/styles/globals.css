@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Кастомный скроллбар */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Глобальные настройки окна */
+body {
+  -webkit-app-region: no-drag;
+  user-select: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-size: calc(16px * var(--ui-scale, 1));
+}
+
+/* Таскать окно можно только за элементы с этим классом */
+.title-bar-drag {
+  -webkit-app-region: drag;
+}
+
+/* Кнопки, инпуты, ссылки и карточки всегда кликабельны */
+button, input, a, .no-drag, .glass {
+  -webkit-app-region: no-drag;
+}
+
+/* Стеклянный эффект (использует переменные для прозрачности и размытия) */
+.glass {
+  background: rgba(20, 20, 25, calc(0.6 * var(--panel-opacity, 1)));
+  backdrop-filter: blur(var(--ui-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--ui-blur, 16px));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+}
+
+/* Светлая тема */
+.light .glass,
+html:not(.dark) .glass {
+  background: rgba(255, 255, 255, calc(0.6 * var(--panel-opacity, 1)));
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Кастомное скругление для модалок */
+.modal-panel {
+  border-radius: var(--ui-radius, 24px);
+}
+
+/* Убираем свечение у всех кнопок по умолчанию */
+button {
+  box-shadow: none;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+/* Усиленное свечение ТОЛЬКО для главной кнопки */
+.btn-glow {
+  box-shadow: 0 0 calc(30px * var(--glow-intensity, 0)) rgba(37, 99, 235, var(--glow-intensity, 0));
+}
+
+/* Кнопки в сайдбаре и настройках никогда не светятся */
+aside button, .modal-panel button, nav button {
+  box-shadow: none !important;
+}

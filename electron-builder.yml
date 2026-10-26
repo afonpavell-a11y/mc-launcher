@@ -1,0 +1,19 @@
+appId: com.afonpavell.mclauncher
+productName: MC Launcher
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+publish:
+  provider: github
+  owner: afonpavell-a11y
+  repo: mc-launcher
